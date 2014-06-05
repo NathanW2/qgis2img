@@ -3,9 +3,13 @@ import os
 import argparse
 
 from qgisapp import qgisapp
-from qgis.core import QgsProviderRegistry, QgsMapLayerRegistry, QgsProject, QgsMapSettings, QgsMapRendererParallelJob
+from qgis.core import QgsProviderRegistry, QgsMapLayerRegistry, QgsProject, QgsMapSettings, \
+                      QgsMapRendererParallelJob, QgsMapRendererSequentialJob
 
 from PyQt4.QtCore import QDir, QFileInfo, QSize
+
+curr_path = os.path.dirname(os.path.abspath(__file__))
+imagepath = os.path.join(curr_path, 'images')
 
 def render_images(layers):
     for layerid, layer in layers.iteritems():
@@ -20,10 +24,13 @@ def render_layer(layer):
     settings.setLayers([layer.id()])
     settings.setExtent(settings.fullExtent())
     job = QgsMapRendererParallelJob(settings)
+    #job = QgsMapRendererSequentialJob(settings)
     job.start()
     job.waitForFinished()
     image = job.renderedImage()
-    image.save(r'F:\dev\qgis2img\images\{0}.jpg'.format(layer.name()))
+    if not os.path.exists(imagepath):
+        os.mkdir(imagepath)
+    image.save(os.path.join(imagepath, layer.name() + '.png'))
     return job.renderingTime()
 
 def read_project(doc):
@@ -35,8 +42,7 @@ def read_project(doc):
 def print_stats(stats):
     results = []
     for layer, timings in stats:
-        results.append("Layer: {0} 0.42 sec".format(layer.name(), (sum(timings) / len(timings)) / 1000))
-        #print "Layer: {0} {1:>10} sec".format(layer.name(), (sum(timings) / len(timings)) / 1000)
+        results.append("Layer: {0} {1:>10} sec".format(layer.name(), (sum(timings) / len(timings)) / 1000))
     print "\n".join(results)
 
 def main(app, projectfile):
@@ -67,5 +73,3 @@ if __name__ == "__main__":
     # Good to go
     with qgisapp(guienabled=False) as app:
         main(app, args.project)
-
-
