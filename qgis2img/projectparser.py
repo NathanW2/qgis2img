@@ -1,7 +1,7 @@
 from PyQt4.QtXml import QDomDocument
 
 from qgis.gui import QgsMapCanvasLayer
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayerRegistry
+from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayerRegistry, QgsMapSettings
 
 
 def iternodes(nodes):
@@ -67,6 +67,13 @@ class ProjectParser(object):
     def layers(self):
         legendnodes = self.doc.elementsByTagName("legendlayer")
         return (self._getLayer(elm) for elm in iternodes(legendnodes))
+
+    def settings(self):
+        canvasnodes = self.doc.elementsByTagName("mapcanvas")
+        node = canvasnodes.at(0).toElement()
+        settings = QgsMapSettings()
+        settings.readXML(node)
+        return settings
 
     def visiblelayers(self):
         legendnodes = self.doc.elementsByTagName("legendlayer")
