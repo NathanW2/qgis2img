@@ -6,7 +6,7 @@ from qgis.core import QgsProviderRegistry, QgsMapLayerRegistry, QgsProject, QgsM
 from PyQt4.QtCore import QDir, QFileInfo, QSize
 
 curr_path = os.path.dirname(os.path.abspath(__file__))
-imagepath = os.path.join(curr_path, 'images')
+imagepath = os.path.join(curr_path, '..' 'images')
 
 def render_images(layers, projectlayers):
     if 'layer' in rendertypes:
