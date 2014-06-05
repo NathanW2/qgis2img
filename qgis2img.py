@@ -58,7 +58,7 @@ def print_stats(stats):
         results.append("Layer: {0} {1:>10} sec".format(layer, (float(sum(timings)) / len(timings)) / 1000))
     print "\n".join(results)
 
-def main(app, projectfile, imagesize, passes, types):
+def main(app, loadedfile, imagesize, passes, types):
     global size
     global renderpasses
     global rendertypes
@@ -67,7 +67,8 @@ def main(app, projectfile, imagesize, passes, types):
     renderpasses = passes
     rendertypes = types
 
-    QgsProject.instance().readProject.connect(read_project)
-    QDir.setCurrent(os.path.dirname(projectfile))
-    fileinfo = QFileInfo(projectfile)
-    QgsProject.instance().read(fileinfo)
+    if loadedfile.endswith('qgs'):
+        QgsProject.instance().readProject.connect(read_project)
+        QDir.setCurrent(os.path.dirname(loadedfile))
+        fileinfo = QFileInfo(loadedfile)
+        QgsProject.instance().read(fileinfo)
