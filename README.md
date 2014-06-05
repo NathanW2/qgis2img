@@ -19,5 +19,18 @@ optional arguments:
 ## Example:
 
 ```
-python.exe F:/dev/qgis2img --project F:\dev\qgis2img\projects\parcels.qgs --passes 5
+$ python.exe qgis2img --project parcels.qgs --passes 5
+Project Loaded with: [u'PARCEL_region - Shp', u'PARCEL_region - Spatialite']
+Rendering images with 5 passes
+Layer: PARCEL_region - Shp      4.907 sec
+Layer: PARCEL_region - Spatialite       3.66 sec
+```
+
+Layers only:
+```
+$ python.exe qgis2img --project parcels.qgs --passes 5 --types layer
+Project Loaded with: [u'PARCEL_region - Shp', u'PARCEL_region - Spatialite']
+Rendering images with 5 passes
+Layer: PARCEL_region - Shp      4.907 sec
+Layer: PARCEL_region - Spatialite       3.66 sec
 ```
