@@ -24,6 +24,7 @@ Project Loaded with: [u'PARCEL_region - Shp', u'PARCEL_region - Spatialite']
 Rendering images with 5 passes
 Layer: PARCEL_region - Shp      4.907 sec
 Layer: PARCEL_region - Spatialite       3.66 sec
+Layer: Project     5.3378 sec
 ```
 
 Layers only:
