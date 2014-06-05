@@ -40,3 +40,7 @@ Rendering images with 5 passes
 Layer: PARCEL_region - Shp      4.907 sec
 Layer: PARCEL_region - Spatialite       3.66 sec
 ```
+
+## NOTE
+
+Requires QGIS 2.4 (QGIS 2.3 dev).

@@ -1,5 +1,5 @@
-from qgisapp import qgisapp
-import qgis2img
+from qgis2img.qgisapp import qgisapp
+import qgis2img.render
 import argparse
 
 parser = argparse.ArgumentParser(description="Benchmark QGIS project file and layer loading times")
@@ -20,4 +20,4 @@ rendertypes = args.types.split('|')
 
 # Good to go
 with qgisapp(guienabled=False) as app:
-    qgis2img.main(app, args.file, (int(width), int(height)), args.passes, rendertypes)
+    qgis2img.render.main(app, args.file, (int(width), int(height)), args.passes, rendertypes)
