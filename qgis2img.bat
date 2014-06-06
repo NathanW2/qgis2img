@@ -25,4 +25,7 @@ CALL %OSGEO4W_ROOT%\bin\o4w_env.bat
 set PATH=%OSGEO4W_ROOT%\bin;%QGIS%\bin;%PATH%
 SET PYTHONHOME=%OSGEO4W_ROOT%\apps\Python27
 set PYTHONPATH=%~dp0;%QGIS%\python;%PYTHONPATH%
+SET QGIS_DEBUG=0
+SET QGIS_LOG_FILE=C:\TEMP\qgis.log
+SET QGIS_DEBUG_FILE=C:\TEMP\qgis.log
 python qgis2img %*
