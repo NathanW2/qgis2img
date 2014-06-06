@@ -49,9 +49,10 @@ def read_project(doc):
     parser = projectparser.ProjectParser(doc)
     projectlayers = list(parser.visiblelayers())
     settings = parser.settings()
-    print_stats(render_images(layers, projectlayers, settings))
+    renderimages = render_images(layers, projectlayers, settings)
+    print_stats(renderimages, settings)
 
-def print_stats(stats):
+def print_stats(stats, settings):
     results = []
     layers = QgsMapLayerRegistry.instance().mapLayers().values()
     maxlengthname = max([len(layer.name()) for layer in layers])
@@ -61,6 +62,7 @@ def print_stats(stats):
 
     width = len(max(results, key=len))
     print "{0:*^{width}}".format("Results", width=width)
+    print "Scale: {}".format(settings.scale())
     print "\n".join(results)
 
 def main(app, loadedfile, imagesize, passes, types):
