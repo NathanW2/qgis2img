@@ -29,3 +29,4 @@ SET QGIS_DEBUG=0
 SET QGIS_LOG_FILE=C:\TEMP\qgis.log
 SET QGIS_DEBUG_FILE=C:\TEMP\qgis.log
 python qgis2img %*
+pause

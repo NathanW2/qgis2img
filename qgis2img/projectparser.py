@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from PyQt4.QtXml import QDomDocument
 
 from qgis.gui import QgsMapCanvasLayer
@@ -12,6 +13,7 @@ def iternodes(nodes):
 class ProjectParser(object):
     def __init__(self, xmldoc):
         self.doc = xmldoc
+        self._maplayers = None
 
     @classmethod
     def fromFile(cls, filename):
@@ -29,29 +31,7 @@ class ProjectParser(object):
         else:
             return None
         layer.readLayerXML(node)
-        return layer.id(), layer
-
-    def canvaslayers(self):
-        """
-        Get all configured canvas layers in the project
-        """
-        layers = QgsMapLayerRegistry.instance().mapLayers()
-
-        def makelayer(layerid, visible):
-            try:
-                layer = layers[layerid]
-            except KeyError:
-                return None
-            return QgsMapCanvasLayer(layer, visible)
-
-        layerset = [makelayer(layerid, visible) for layerid, visible in self.layers()]
-        layerset = filter(None, layerset)
-        return layerset
-
-    @property
-    def canvasnode(self):
-        nodes = self.doc.elementsByTagName("mapcanvas")
-        return nodes.at(0)
+        return layer
 
     def _getLayer(self, node):
         filelist = node.elementsByTagName("legendlayerfile")
@@ -62,13 +42,24 @@ class ProjectParser(object):
 
     def maplayers(self):
         layernodes = self.doc.elementsByTagName("maplayer")
-        return (self._createLayer(elm) for elm in iternodes(layernodes))
+        if not self._maplayers:
+            self._maplayers = [self._createLayer(elm) for elm in iternodes(layernodes)]
+            QgsMapLayerRegistry.instance().addMapLayers(self._maplayers)
+        return self._maplayers
 
-    def layers(self):
+    def legendlayers(self):
         legendnodes = self.doc.elementsByTagName("legendlayer")
-        return (self._getLayer(elm) for elm in iternodes(legendnodes))
+        layers = OrderedDict()
+        for elm in iternodes(legendnodes):
+            layerid, visible = self._getLayer(elm)
+            layers[layerid] = visible
+        return layers
 
     def settings(self):
+        """
+        Return the settings that have been set for the map canvas.
+        @return: A QgsMapSettings instance with the settings read from the project.
+        """
         canvasnodes = self.doc.elementsByTagName("mapcanvas")
         node = canvasnodes.at(0).toElement()
         settings = QgsMapSettings()
@@ -76,9 +67,6 @@ class ProjectParser(object):
         return settings
 
     def visiblelayers(self):
-        legendnodes = self.doc.elementsByTagName("legendlayer")
-        layers = (self._getLayer(elm) for elm in iternodes(legendnodes))
-        for layerid, visible in layers:
-            if visible:
-                yield layerid
-
+        # Filter out only the ones we can see.
+        visible = [layerid for layerid, visible in self.legendlayers().iteritems() if visible]
+        return [layer for layer in self.maplayers() if layer.id() in visible]

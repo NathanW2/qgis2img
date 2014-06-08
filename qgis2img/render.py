@@ -1,60 +1,84 @@
 import os
 
+from qgis.core.contextmanagers import qgisapp
 from qgis.core import QgsProviderRegistry, QgsMapLayerRegistry, QgsProject, QgsMapSettings, \
     QgsMapRendererParallelJob, QgsMapRendererSequentialJob
 
 from PyQt4.QtCore import QDir, QFileInfo, QSize
 
-curr_path = os.path.dirname(os.path.abspath(__file__))
-imagepath = os.path.join(curr_path, '..', 'images')
+import projectparser
 
-def render_images(layers, projectlayers, settings):
-    if 'layer' in rendertypes:
-        for layerid, layer in layers.iteritems():
-            timings = []
-            for i in range(renderpasses):
-                timings.append(render_layer(layer, settings))
-            yield layer.name(), timings
-    if 'project' in rendertypes:
+curr_path = os.path.dirname(os.path.abspath(__file__))
+defaultimagepath = os.path.join(curr_path, '..', 'images')
+
+def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
+    def _render_images(name, *layerids):
         timings = []
-        for i in range(renderpasses):
-            timings.append(render_project(projectlayers, settings))
+        for i in range(imagecount):
+            image, timing = render_layers(settings, layerids)
+            timings.append(timing)
+            export_image(image, name, defaultimagepath)
+        return timings
+
+    if 'layer' in whattorender:
+        for layer in alllayers:
+            timings = _render_images(layer.name(), [layer.id()])
+            yield layer.name(), timings
+    if 'project' in whattorender:
+        projectids = [layer.id() for layer in projectlayers]
+        timings = _render_images("Project", projectids)
         yield "Project", timings
 
-def render(name, settings):
-    settings.setOutputSize(size)
+def render(settings):
+    """
+    Render the given settings to a image and save to disk.
+    name: The name of the final result file.
+    settings: QgsMapSettings containing the settings to render
+    exportpath: The folder for the images to be exported to.
+    """
     job = QgsMapRendererParallelJob(settings)
     #job = QgsMapRendererSequentialJob(settings)
     job.start()
     job.waitForFinished()
     image = job.renderedImage()
-    if not os.path.exists(imagepath):
-        os.mkdir(imagepath)
-    image.save(os.path.join(imagepath, name + '.png'))
-    return job.renderingTime()
+    return image, job.renderingTime()
 
-def render_project(layers, settings):
-    settings.setLayers(layers)
-    return render(QgsProject.instance().title(), settings)
+def render_layers(settings, layers):
+    """
+    Render the given layers to a image.
+    @param layers: The images to render.
+    @param settings: The settings used to render the layer.
+    @return: The image and the render time.
+    """
+    settings.setLayers(*layers)
+    return render(settings)
 
-def render_layer(layer, settings):
-    settings.setLayers([layer.id()])
-    return render(layer.name(), settings)
+def export_image(image, name, exportpath=defaultimagepath):
+    """
+    Export the image with the given name to the folder.
+    @param image: The image to export.
+    @param name: The name of the result image.
+    @param exportpath: The export path.
+    """
+    if not os.path.exists(exportpath):
+        os.mkdir(exportpath)
+    image.save(os.path.join(exportpath, name + '.png'))
 
-def read_project(doc):
-    layers = QgsMapLayerRegistry.instance().mapLayers()
-    print "Project Loaded with:", [layer.name() for layer in layers.values()]
-    print "Rendering images with {0} passes".format(renderpasses)
-    import projectparser
-    parser = projectparser.ProjectParser(doc)
+def read_project(projectfile):
+    """
+    Read the given project file and extract the layers from it.
+    @param projectfile: The project file to load
+    @return: A tuple with the project parser instance, all project layers, visible layers, settings
+    """
+    QDir.setCurrent(os.path.dirname(projectfile))
+    parser = projectparser.ProjectParser.fromFile(projectfile)
+    layers = parser.maplayers()
     projectlayers = list(parser.visiblelayers())
     settings = parser.settings()
-    renderimages = render_images(layers, projectlayers, settings)
-    print_stats(renderimages, settings)
+    return parser, layers, projectlayers, settings
 
-def print_stats(stats, settings):
+def print_stats(layers, stats, settings):
     results = []
-    layers = QgsMapLayerRegistry.instance().mapLayers().values()
     maxlengthname = max([len(layer.name()) for layer in layers])
     for layer, timings in stats:
         time = float(sum(timings)) / len(timings) / 1000
@@ -65,17 +89,28 @@ def print_stats(stats, settings):
     print "Scale: {}".format(settings.scale())
     print "\n".join(results)
 
-def main(app, loadedfile, imagesize, passes, types):
-    global size
-    global renderpasses
-    global rendertypes
+def bench(args):
+    """
+    Run qgis2img in benchmark mode.
+    @param args: Args passed into the application.
+    @return:
+    """
+    rendertypes = args.types.split('|')
+    size = QSize(*args.size)
+    renderpasses = args.passes
+    #
+    if args.file.endswith('qgs'):
+        with qgisapp(guienabled=False) as app:
+            parser, layers, projectlayers, settings = read_project(args.file)
+            settings.setOutputSize(size)
+            print "Project Loaded with:", [layer.name() for layer in layers]
+            print "Rendering images with {0} passes".format(renderpasses)
+            ## Good to go
+            renderresults = render_images(layers, projectlayers, settings, renderpasses, rendertypes)
+            print_stats(layers, renderresults, settings)
 
-    size = QSize(imagesize[0], imagesize[1])
-    renderpasses = passes
-    rendertypes = types
+def export(args):
+    print args
+    pass
 
-    if loadedfile.endswith('qgs'):
-        QgsProject.instance().readProject.connect(read_project)
-        QDir.setCurrent(os.path.dirname(loadedfile))
-        fileinfo = QFileInfo(loadedfile)
-        QgsProject.instance().read(fileinfo)
+
