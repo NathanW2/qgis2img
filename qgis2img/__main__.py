@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import qgis2img.render
 import argparse
 
