@@ -12,7 +12,7 @@ parser.add_argument(
     '--passes',
     dest='passes',
     type=int,
-    default=100,
+    default=3,
     help="Number of render passes per layer")
 parser.add_argument(
     '--types',
