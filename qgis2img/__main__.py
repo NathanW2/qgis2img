@@ -1,4 +1,4 @@
-from qgis2img.qgisapp import qgisapp
+from qgis2img.qgis_application import qgisapp
 import qgis2img.render
 import argparse
 

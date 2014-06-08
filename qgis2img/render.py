@@ -57,8 +57,8 @@ def read_project(doc):
     layers = QgsMapLayerRegistry.instance().mapLayers()
     print "Project Loaded with:", [layer.name() for layer in layers.values()]
     print "Rendering images with {0} passes".format(RENDER_PASSES)
-    import projectparser
-    parser = projectparser.ProjectParser(doc)
+    import project_parser
+    parser = project_parser.ProjectParser(doc)
     project_layers = list(parser.visible_layers())
     settings = parser.settings()
     images = render_images(layers, project_layers, settings)
