@@ -1,5 +1,6 @@
 import os
 
+from qgis.core.contextmanagers import qgisapp
 from qgis.core import (
     QgsProviderRegistry,
     QgsMapLayerRegistry,
@@ -10,90 +11,126 @@ from qgis.core import (
 
 from PyQt4.QtCore import QDir, QFileInfo, QSize
 
+import projectparser
+
 curr_path = os.path.dirname(os.path.abspath(__file__))
-image_path = os.path.join(curr_path, '..', 'images')
+defaultimagepath = os.path.join(curr_path, '..', 'images')
 
-
-def render_images(layers, project_layers, settings):
-    if 'layer' in RENDER_TYPES:
-        for layer_id, layer in layers.iteritems():
-            timings = []
-            for i in range(RENDER_PASSES):
-                timings.append(render_layer(layer, settings))
-            yield layer.name(), timings
-    if 'project' in RENDER_TYPES:
+def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
+    """
+    Render images with the given layers and settings.
+    @param alllayers: All the layers to render.
+    @param projectlayers: All project layers to render.
+    @param settings: The settings to render with
+    @param imagecount: The number of passes to do for each layer.
+    @param whattorender:
+    @return: A generator that will render each image as it unwound.
+    """
+    def _render_images(name, *layerids):
         timings = []
-        for i in range(RENDER_PASSES):
-            timings.append(render_project(project_layers, settings))
+        for i in range(imagecount):
+            image, timing = render_layers(settings, layerids)
+            timings.append(timing)
+            export_image(image, name, defaultimagepath)
+        return timings
+
+    if 'layer' in whattorender:
+        for layer in alllayers:
+            timings = _render_images(layer.name(), [layer.id()])
+            yield layer.name(), timings
+    if 'project' in whattorender:
+        projectids = [layer.id() for layer in projectlayers]
+        timings = _render_images("Project", projectids)
         yield "Project", timings
 
-
-def render(name, settings):
-    settings.setOutputSize(IMAGE_SIZE)
+def render(settings):
+    """
+    Render the given settings to a image and save to disk.
+    name: The name of the final result file.
+    settings: QgsMapSettings containing the settings to render
+    exportpath: The folder for the images to be exported to.
+    """
     job = QgsMapRendererParallelJob(settings)
     #job = QgsMapRendererSequentialJob(settings)
     job.start()
     job.waitForFinished()
     image = job.renderedImage()
-    if not os.path.exists(image_path):
-        os.mkdir(image_path)
-    image.save(os.path.join(image_path, name + '.png'))
-    return job.renderingTime()
+    return image, job.renderingTime()
 
+def render_layers(settings, layers):
+    """
+    Render the given layers to a image.
+    @param layers: The images to render.
+    @param settings: The settings used to render the layer.
+    @return: The image and the render time.
+    """
+    settings.setLayers(*layers)
+    return render(settings)
 
-def render_project(layers, settings):
-    settings.setLayers(layers)
-    # noinspection PyUnresolvedReferences
-    return render(QgsProject.instance().title(), settings)
+def export_image(image, name, exportpath=defaultimagepath):
+    """
+    Export the image with the given name to the folder.
+    @param image: The image to export.
+    @param name: The name of the result image.
+    @param exportpath: The export path.
+    """
+    if not os.path.exists(exportpath):
+        os.mkdir(exportpath)
+    image.save(os.path.join(exportpath, name + '.png'))
 
-
-def render_layer(layer, settings):
-    settings.setLayers([layer.id()])
-    return render(layer.name(), settings)
-
-
-def read_project(doc):
-    # noinspection PyUnresolvedReferences
-    layers = QgsMapLayerRegistry.instance().mapLayers()
-    print "Project Loaded with:", [layer.name() for layer in layers.values()]
-    print "Rendering images with {0} passes".format(RENDER_PASSES)
-    import project_parser
-    parser = project_parser.ProjectParser(doc)
-    project_layers = list(parser.visible_layers())
+def read_project(projectfile):
+    """
+    Read the given project file and extract the layers from it.
+    @param projectfile: The project file to load
+    @return: A tuple with the project parser instance, all project layers, visible layers, settings
+    """
+    QDir.setCurrent(os.path.dirname(projectfile))
+    parser = projectparser.ProjectParser.fromFile(projectfile)
+    layers = parser.maplayers()
+    projectlayers = list(parser.visiblelayers())
     settings = parser.settings()
-    images = render_images(layers, project_layers, settings)
-    print_stats(images, settings)
+    return parser, layers, projectlayers, settings
 
-
-def print_stats(stats, settings):
+def print_stats(layers, stats, settings):
     results = []
-    # noinspection PyUnresolvedReferences
-    layers = QgsMapLayerRegistry.instance().mapLayers().values()
-    maximum_name_length = max([len(layer.name()) for layer in layers])
+    maxlengthname = max([len(layer.name()) for layer in layers])
     for layer, timings in stats:
         time = float(sum(timings)) / len(timings) / 1000
         results.append(
             "Layer: {0:{maxlen}} {1:>10} sec".format(
-                layer, time, maxlen=maximum_name_length))
+                layer, time, maxlen=maxlengthname))
 
     width = len(max(results, key=len))
     print "{0:*^{width}}".format("Results", width=width)
     print "Scale: {}".format(settings.scale())
     print "\n".join(results)
 
+def run(args):
+    """
+    Run qgis2img in benchmark mode.
+    @param args: Args passed into the application.
+    @return:
+    """
+    command = args.subparser_name
+    if command == "bench":
+        rendertypes = args.types.split('|')
+        renderpasses = args.passes
+    else:
+        rendertypes = 'project'
+        renderpasses = 1
 
-def main(load_file, image_size, passes, render_types):
-    global IMAGE_SIZE
-    global RENDER_PASSES
-    global RENDER_TYPES
-
-    IMAGE_SIZE = QSize(image_size[0], image_size[1])
-    RENDER_PASSES = passes
-    RENDER_TYPES = render_types
-
-    if load_file.endswith('qgs'):
-        QgsProject.instance().readProject.connect(read_project)
-        QDir.setCurrent(os.path.dirname(load_file))
-        file_info = QFileInfo(load_file)
-        # noinspection PyUnresolvedReferences
-        QgsProject.instance().read(file_info)
+    size = QSize(*args.size)
+    if args.file.endswith('qgs'):
+        with qgisapp(guienabled=False) as app:
+            parser, layers, projectlayers, settings = read_project(args.file)
+            settings.setOutputSize(size)
+            print "Project Loaded with:", [layer.name() for layer in layers]
+            print "Rendering images with {0} passes".format(renderpasses)
+            ## Good to go
+            renderresults = render_images(layers, projectlayers, settings, renderpasses, rendertypes)
+            if command == "bench":
+                print_stats(layers, renderresults, settings)
+            else:
+                # Just unwind the generator to run the export.
+                results = list(renderresults)
+            print "Done"
