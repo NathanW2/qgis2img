@@ -12,6 +12,15 @@ curr_path = os.path.dirname(os.path.abspath(__file__))
 defaultimagepath = os.path.join(curr_path, '..', 'images')
 
 def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
+    """
+    Render images with the given layers and settings.
+    @param alllayers: All the layers to render.
+    @param projectlayers: All project layers to render.
+    @param settings: The settings to render with
+    @param imagecount: The number of passes to do for each layer.
+    @param whattorender:
+    @return: A generator that will render each image as it unwound.
+    """
     def _render_images(name, *layerids):
         timings = []
         for i in range(imagecount):
@@ -89,16 +98,21 @@ def print_stats(layers, stats, settings):
     print "Scale: {}".format(settings.scale())
     print "\n".join(results)
 
-def bench(args):
+def run(args):
     """
     Run qgis2img in benchmark mode.
     @param args: Args passed into the application.
     @return:
     """
-    rendertypes = args.types.split('|')
+    command = args.subparser_name
+    if command == "bench":
+        rendertypes = args.types.split('|')
+        renderpasses = args.passes
+    else:
+        rendertypes = 'project'
+        renderpasses = 1
+
     size = QSize(*args.size)
-    renderpasses = args.passes
-    #
     if args.file.endswith('qgs'):
         with qgisapp(guienabled=False) as app:
             parser, layers, projectlayers, settings = read_project(args.file)
@@ -107,10 +121,11 @@ def bench(args):
             print "Rendering images with {0} passes".format(renderpasses)
             ## Good to go
             renderresults = render_images(layers, projectlayers, settings, renderpasses, rendertypes)
-            print_stats(layers, renderresults, settings)
-
-def export(args):
-    print args
-    pass
+            if command == "bench":
+                print_stats(layers, renderresults, settings)
+            else:
+                # Just unwind the generator to run the export.
+                results = list(renderresults)
+            print "Done"
 
 
