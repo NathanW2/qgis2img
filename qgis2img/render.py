@@ -1,8 +1,13 @@
 import os
 
 from qgis.core.contextmanagers import qgisapp
-from qgis.core import QgsProviderRegistry, QgsMapLayerRegistry, QgsProject, QgsMapSettings, \
-    QgsMapRendererParallelJob, QgsMapRendererSequentialJob
+from qgis.core import (
+    QgsProviderRegistry,
+    QgsMapLayerRegistry,
+    QgsProject,
+    QgsMapSettings,
+    #QgsMapRendererSequentialJob,
+    QgsMapRendererParallelJob)
 
 from PyQt4.QtCore import QDir, QFileInfo, QSize
 
@@ -91,7 +96,9 @@ def print_stats(layers, stats, settings):
     maxlengthname = max([len(layer.name()) for layer in layers])
     for layer, timings in stats:
         time = float(sum(timings)) / len(timings) / 1000
-        results.append("Layer: {0:{maxlen}} {1:>10} sec".format(layer, time, maxlen=maxlengthname))
+        results.append(
+            "Layer: {0:{maxlen}} {1:>10} sec".format(
+                layer, time, maxlen=maxlengthname))
 
     width = len(max(results, key=len))
     print "{0:*^{width}}".format("Results", width=width)
@@ -127,5 +134,3 @@ def run(args):
                 # Just unwind the generator to run the export.
                 results = list(renderresults)
             print "Done"
-
-
