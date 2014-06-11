@@ -2,14 +2,11 @@ import os
 
 from qgis.core.contextmanagers import qgisapp
 from qgis.core import (
-    QgsProviderRegistry,
-    QgsMapLayerRegistry,
-    QgsProject,
     QgsMapSettings,
     #QgsMapRendererSequentialJob,
     QgsMapRendererParallelJob)
 
-from PyQt4.QtCore import QDir, QFileInfo, QSize
+from PyQt4.QtCore import QSize
 
 import projectparser
 
@@ -82,14 +79,13 @@ def read_project(projectfile):
     """
     Read the given project file and extract the layers from it.
     @param projectfile: The project file to load
-    @return: A tuple with the project parser instance, all project layers, visible layers, settings
+    @return: A tuple with the project project instance, all project layers, visible layers, settings
     """
-    QDir.setCurrent(os.path.dirname(projectfile))
-    parser = projectparser.ProjectParser.fromFile(projectfile)
-    layers = parser.maplayers()
-    projectlayers = list(parser.visiblelayers())
-    settings = parser.settings()
-    return parser, layers, projectlayers, settings
+    project = projectparser.Project.fromFile(projectfile)
+    layers = project.maplayers()
+    projectlayers = list(project.visiblelayers())
+    settings = project.settings()
+    return project, layers, projectlayers, settings
 
 def print_stats(layers, stats, settings):
     results = []

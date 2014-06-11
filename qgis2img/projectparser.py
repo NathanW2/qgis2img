@@ -1,8 +1,11 @@
+import os
+
 from collections import OrderedDict
 from PyQt4.QtXml import QDomDocument
+from PyQt4.QtCore import QDir, QFileInfo
 
 from qgis.gui import QgsMapCanvasLayer
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayerRegistry, QgsMapSettings
+from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayerRegistry, QgsMapSettings, QgsProject
 
 
 def iternodes(nodes):
@@ -10,13 +13,16 @@ def iternodes(nodes):
         yield nodes.at(index).toElement()
 
 
-class ProjectParser(object):
+class Project(object):
     def __init__(self, xmldoc):
         self.doc = xmldoc
         self._maplayers = None
 
     @classmethod
     def fromFile(cls, filename):
+        QDir.setCurrent(os.path.dirname(filename))
+        fileinfo = QFileInfo(filename)
+        QgsProject.instance().read(fileinfo)
         xml = open(filename).read()
         doc = QDomDocument()
         doc.setContent(xml)
@@ -41,11 +47,7 @@ class ProjectParser(object):
         return layerid, bool(visible)
 
     def maplayers(self):
-        layernodes = self.doc.elementsByTagName("maplayer")
-        if not self._maplayers:
-            self._maplayers = [self._createLayer(elm) for elm in iternodes(layernodes)]
-            QgsMapLayerRegistry.instance().addMapLayers(self._maplayers)
-        return self._maplayers
+        return QgsMapLayerRegistry.instance().mapLayers().values()
 
     def legendlayers(self):
         legendnodes = self.doc.elementsByTagName("legendlayer")
