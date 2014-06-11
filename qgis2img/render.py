@@ -96,9 +96,10 @@ def print_stats(layers, stats, settings):
     maxlengthname = max([len(layer.name()) for layer in layers])
     for layer, timings in stats:
         time = float(sum(timings)) / len(timings) / 1000
+        stddev = (sum(map(lambda x: (x/1000.-time)**2, timings)) / len(timings))**0.5
         results.append(
-            "Layer: {0:{maxlen}} {1:>10} sec".format(
-                layer, time, maxlen=maxlengthname))
+            "Layer: {0:{maxlen}} {1:>10} sec     (stddev {2:>10} sec)".format(
+                layer, time, stddev, maxlen=maxlengthname))
 
     width = len(max(results, key=len))
     print "{0:*^{width}}".format("Results", width=width)
