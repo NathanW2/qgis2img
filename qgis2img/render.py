@@ -23,7 +23,7 @@ def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
     @param whattorender:
     @return: A generator that will render each image as it unwound.
     """
-    def _render_images(name, *layerids):
+    def _render_images(name, layerids):
         timings = []
         for i in range(imagecount):
             image, timing = render_layers(settings, layerids)
@@ -61,7 +61,7 @@ def render_layers(settings, layers):
     @param settings: The settings used to render the layer.
     @return: The image and the render time.
     """
-    settings.setLayers(*layers)
+    settings.setLayers(layers)
     return render(settings)
 
 def export_image(image, name, exportpath=defaultimagepath):
