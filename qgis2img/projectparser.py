@@ -8,6 +8,10 @@ from qgis.gui import QgsMapCanvasLayer
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayerRegistry, QgsMapSettings, QgsProject
 
 
+def layer_by_id(layerid):
+    return QgsMapLayerRegistry.instance().mapLayers()[layerid]
+
+
 def iternodes(nodes):
     for index in xrange(nodes.length()):
         yield nodes.at(index).toElement()
@@ -71,4 +75,4 @@ class Project(object):
     def visiblelayers(self):
         # Filter out only the ones we can see.
         visible = [layerid for layerid, visible in self.legendlayers().iteritems() if visible]
-        return [layer for layer in self.maplayers() if layer.id() in visible]
+        return [layer_by_id(layerid) for layerid in visible]

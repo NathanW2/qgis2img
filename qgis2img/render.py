@@ -40,21 +40,8 @@ def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
         timings = _render_images("Project", projectids)
         yield "Project", timings
 
-def render(settings):
-    """
-    Render the given settings to a image and save to disk.
-    name: The name of the final result file.
-    settings: QgsMapSettings containing the settings to render
-    exportpath: The folder for the images to be exported to.
-    """
-    job = QgsMapRendererParallelJob(settings)
-    #job = QgsMapRendererSequentialJob(settings)
-    job.start()
-    job.waitForFinished()
-    image = job.renderedImage()
-    return image, job.renderingTime()
 
-def render_layers(settings, layers):
+def render_layers(settings, layers, RenderType=QgsMapRendererParallelJob):
     """
     Render the given layers to a image.
     @param layers: The images to render.
@@ -62,7 +49,11 @@ def render_layers(settings, layers):
     @return: The image and the render time.
     """
     settings.setLayers(layers)
-    return render(settings)
+    job = RenderType(settings)
+    job.start()
+    job.waitForFinished()
+    image = job.renderedImage()
+    return image, job.renderingTime()
 
 def export_image(image, name, exportpath=defaultimagepath):
     """

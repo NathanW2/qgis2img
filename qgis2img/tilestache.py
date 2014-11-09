@@ -1,4 +1,5 @@
 from PIL import Image
+from urlparse import urljoin, urlparse
 
 from qgis.core import QgsMapSettings, QgsRectangle, QgsMapRendererParallelJob, QgsCoordinateReferenceSystem, QgsMapRendererSequentialJob
 from qgis.core.contextmanagers import qgisapp
@@ -6,10 +7,9 @@ from qgis.core.contextmanagers import qgisapp
 from PyQt4.QtGui import QImage
 from PyQt4.QtCore import QBuffer, QIODevice, QSize
 
-from qgis2img import projectparser
+import qgis2img.render
 
-qgis = None
-project = None
+loadedprojects = {}
 
 class Output:
     def __init__(self, content):
@@ -22,28 +22,26 @@ class Output:
         out.write(buffer.data())
         buffer.close()
 
+
 class Provider:
     def __init__(self, layer, projectfile):
         self.layer = layer
-        self.projectfile = projectfile
+        projectfile = urljoin(layer.config.dirpath, projectfile)
+        scheme, h, file_path, p, q, f = urlparse(projectfile)
+        self.projectfile = file_path
         self.project = None
 
     def renderArea(self, width, height, srs, xmin, ymin, xmax, ymax, zoom):
-        print width, height, srs, xmin, ymin, xmax, ymax, zoom
-        global qgis
-        if not qgis:
-            qgis = qgisapp(guienabled=False, sysexit=False).__enter__()
+        # print width, height, srs, xmin, ymin, xmax, ymax, zoom
+        try:
+            app, project = loadedprojects[self.projectfile]
+        except KeyError:
+            app = qgisapp(guienabled=False, sysexit=False).__enter__()
+            project, _, _, _ = qgis2img.render.read_project(self.projectfile)
+            loadedprojects[self.projectfile] = (app, project)
 
-        global project
-        if not project:
-            project = projectparser.Project.fromFile(self.projectfile)
-
-        layer = project.maplayers()[0]
-        print "VALID", layer.isValid()
-
-        # settings = project.settings()
-
-        settings = QgsMapSettings()
+        # settings = QgsMapSettings()
+        settings = project.settings()
         crs = QgsCoordinateReferenceSystem()
         crs.createFromSrid(3857)
         settings.setDestinationCrs(crs)
@@ -51,20 +49,13 @@ class Provider:
         extents = QgsRectangle(xmin, ymin, xmax, ymax)
         settings.setExtent(extents)
         settings.setOutputSize(QSize(width, height))
-        print settings.destinationCrs().authid()
-        print extents.toString()
-        projectids = [layer.id() for layer in project.visiblelayers()]
-        settings.setLayers(projectids)
-
-        # job = QgsMapRendererParallelJob(settings)
-        job = QgsMapRendererSequentialJob(settings)
-        job.start()
-        job.waitForFinished()
-        image = job.renderedImage()
+        layers = [layer.id() for layer in project.visiblelayers()]
+        image, rendertime = qgis2img.render.render_layers(settings, layers, RenderType=QgsMapRendererSequentialJob)
+        print "Render Time: {}ms".format(rendertime)
         return Output(image)
 
-    def getTypeByExtension(self, extension):
-        if extension.lower() == "png":
-            return "application/png", "png"
-        else:
-            raise ValueError(extension)
+    # def getTypeByExtension(self, extension):
+    #     if extension.lower() == "png":
+    #         return "application/png", "png"
+    #     else:
+    #         raise ValueError(extension)
