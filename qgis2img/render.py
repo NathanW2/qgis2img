@@ -3,7 +3,7 @@ import os
 from qgis.core.contextmanagers import qgisapp
 from qgis.core import (
     QgsMapSettings,
-    #QgsMapRendererSequentialJob,
+    QgsMapRendererSequentialJob,
     QgsMapRendererParallelJob)
 
 from PyQt4.QtCore import QSize
@@ -12,6 +12,7 @@ import projectparser
 
 curr_path = os.path.dirname(os.path.abspath(__file__))
 defaultimagepath = os.path.join(curr_path, '..', 'images')
+
 
 def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
     """
@@ -23,6 +24,7 @@ def render_images(alllayers, projectlayers, settings, imagecount, whattorender):
     @param whattorender:
     @return: A generator that will render each image as it unwound.
     """
+
     def _render_images(name, layerids):
         timings = []
         for i in range(imagecount):
@@ -55,6 +57,7 @@ def render_layers(settings, layers, RenderType=QgsMapRendererParallelJob):
     image = job.renderedImage()
     return image, job.renderingTime()
 
+
 def export_image(image, name, exportpath=defaultimagepath):
     """
     Export the image with the given name to the folder.
@@ -65,6 +68,7 @@ def export_image(image, name, exportpath=defaultimagepath):
     if not os.path.exists(exportpath):
         os.mkdir(exportpath)
     image.save(os.path.join(exportpath, name + '.png'))
+
 
 def read_project(projectfile):
     """
@@ -78,12 +82,13 @@ def read_project(projectfile):
     settings = project.settings()
     return project, layers, projectlayers, settings
 
+
 def print_stats(layers, stats, settings):
     results = []
     maxlengthname = max([len(layer.name()) for layer in layers])
     for layer, timings in stats:
         time = float(sum(timings)) / len(timings) / 1000
-        stddev = (sum(map(lambda x: (x/1000.-time)**2, timings)) / len(timings))**0.5
+        stddev = (sum(map(lambda x: (x / 1000. - time) ** 2, timings)) / len(timings)) ** 0.5
         results.append(
             "Layer: {0:{maxlen}} {1:>10} sec     (stddev {2:>10} sec)".format(
                 layer, time, stddev, maxlen=maxlengthname))
@@ -92,6 +97,7 @@ def print_stats(layers, stats, settings):
     print "{0:*^{width}}".format("Results", width=width)
     print "Scale: {}".format(settings.scale())
     print "\n".join(results)
+
 
 def run(args):
     """
