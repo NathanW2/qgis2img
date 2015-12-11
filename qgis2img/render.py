@@ -4,7 +4,7 @@ from qgis.core.contextmanagers import qgisapp
 from qgis.core import (
     QgsMapSettings,
     QgsMapRendererSequentialJob,
-    QgsMapRendererParallelJob)
+    QgsMapRendererParallelJob, QGis)
 
 from PyQt4.QtCore import QSize
 
@@ -116,6 +116,7 @@ def run(args):
     size = QSize(*args.size)
     if args.file.endswith('qgs'):
         with qgisapp(guienabled=False) as app:
+            print "Using QGIS version ", QGis.QGIS_VERSION
             parser, layers, projectlayers, settings = read_project(args.file)
             settings.setOutputSize(size)
             print "Project Loaded with:", [layer.name() for layer in layers]
